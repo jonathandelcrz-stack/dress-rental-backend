@@ -25,6 +25,44 @@ const pool = new Pool({
   }
 });
 
+// Auto-Create Database Tables on Startup (Bypasses Render Free Tier Shell restriction)
+const initDb = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS dresses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        brand VARCHAR(255) DEFAULT 'Pretty on Repeat',
+        retail_price NUMERIC(10, 2) DEFAULT 300.00,
+        image_urls TEXT[],
+        images_360 TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS inventory_items (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        dress_id UUID REFERENCES dresses(id) ON DELETE CASCADE,
+        size VARCHAR(10) NOT NULL,
+        sku VARCHAR(100) UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS rental_bookings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        item_id UUID REFERENCES inventory_items(id) ON DELETE CASCADE,
+        rental_period DATERANGE NOT NULL,
+        status VARCHAR(50) DEFAULT 'CONFIRMED',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database tables successfully initialized!');
+  } catch (err) {
+    console.error('Error initializing database tables:', err.message);
+  }
+};
+
+initDb();
+
 // Multer Storage Configuration for Admin Uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -256,49 +294,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-// PostgreSQL Pool Connection (Configured with SSL for Render Cloud Deployment)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
-
-// Auto-Create Database Tables on Startup
-const initDb = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS dresses (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        brand VARCHAR(255) DEFAULT 'Pretty on Repeat',
-        retail_price NUMERIC(10, 2) DEFAULT 300.00,
-        image_urls TEXT[],
-        images_360 TEXT[],
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS inventory_items (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        dress_id UUID REFERENCES dresses(id) ON DELETE CASCADE,
-        size VARCHAR(10) NOT NULL,
-        sku VARCHAR(100) UNIQUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS rental_bookings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        item_id UUID REFERENCES inventory_items(id) ON DELETE CASCADE,
-        rental_period DATERANGE NOT NULL,
-        status VARCHAR(50) DEFAULT 'CONFIRMED',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log('Database tables successfully initialized!');
-  } catch (err) {
-    console.error('Error initializing database tables:', err.message);
-  }
-};
-
-initDb();
