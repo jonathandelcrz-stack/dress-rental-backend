@@ -200,7 +200,7 @@ app.post('/api/create-booking', async (req, res) => {
   }
 });
 
-// 5. Admin: Fetch All Bookings
+// 5. Admin: Fetch All Bookings (Includes Created Date & Time)
 app.get('/api/admin/bookings', async (req, res) => {
   try {
     const query = `
@@ -210,7 +210,9 @@ app.get('/api/admin/bookings', async (req, res) => {
         i.size,
         i.sku,
         b.rental_period,
-        b.status
+        b.status,
+        TO_CHAR(b.created_at, 'YYYY-MM-DD') AS booking_date,
+        TO_CHAR(b.created_at, 'HH12:MI AM') AS booking_time
       FROM rental_bookings b
       JOIN inventory_items i ON b.item_id = i.id
       JOIN dresses d ON i.dress_id = d.id
