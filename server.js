@@ -25,9 +25,18 @@ const pool = new Pool({
   }
 });
 
-// Auto-Create Database Tables on Startup (Bypasses Render Free Tier Shell restriction)
+// PostgreSQL Pool Connection (Configured with SSL for Render Cloud Deployment)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Auto-Create Database Tables and Seed Initial Data on Startup
 const initDb = async () => {
   try {
+    // 1. Create tables if they do not exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS dresses (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,8 +65,38 @@ const initDb = async () => {
       );
     `);
     console.log('Database tables successfully initialized!');
+
+    // 2. Check if the catalog is empty
+    const checkCatalog = await pool.query('SELECT COUNT(*) FROM dresses');
+    const dressCount = parseInt(checkCatalog.rows[0].count, 10);
+
+    // 3. Auto-seed sample dresses if database has 0 items
+    if (dressCount === 0) {
+      console.log('No dresses found in database. Seeding initial catalog items...');
+      
+      const seedDressQuery = `
+        INSERT INTO dresses (name, brand, retail_price, image_urls)
+        VALUES 
+          ('Blush Silk Ballgown', 'Pretty on Repeat', 450.00, ARRAY['/images/8.jpg']),
+          ('Ethereal Velvet Gown', 'Luxe Collection', 500.00, ARRAY['/images/8.jpg'])
+        RETURNING id;
+      `;
+      const seedResult = await pool.query(seedDressQuery);
+
+      // Create S, M, L sizes for each seeded gown
+      for (const row of seedResult.rows) {
+        await pool.query(`
+          INSERT INTO inventory_items (dress_id, size, sku)
+          VALUES 
+            ($1::uuid, 'S', CONCAT('SKU-', SUBSTRING($1::text, 1, 8), '-S')),
+            ($1::uuid, 'M', CONCAT('SKU-', SUBSTRING($1::text, 1, 8), '-M')),
+            ($1::uuid, 'L', CONCAT('SKU-', SUBSTRING($1::text, 1, 8), '-L'));
+        `, [row.id]);
+      }
+      console.log('Sample catalog items and inventory successfully seeded!');
+    }
   } catch (err) {
-    console.error('Error initializing database tables:', err.message);
+    console.error('Error initializing or seeding database:', err.message);
   }
 };
 
