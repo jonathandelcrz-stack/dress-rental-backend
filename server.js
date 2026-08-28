@@ -14,12 +14,15 @@ app.use(cors());
 // Serve static frontend files (index.html, admin.html)
 app.use(express.static(__dirname));
 
-// Serve local dress images from C:\Users\IT\dress-rental-backend\image
+// Serve local dress images
 app.use('/images', express.static(path.join(__dirname, 'image')));
 
-// PostgreSQL Pool Connection
+// PostgreSQL Pool Connection (Configured with SSL for Render Cloud Deployment)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Multer Storage Configuration for Admin Uploads
@@ -177,13 +180,7 @@ app.post('/api/admin/upload-image', upload.single('dressImage'), async (req, res
   }
 });
 
-// Start Server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
-// Admin Endpoint: Create a completely new dress entry with an uploaded cover image
-// Admin Endpoint: Create a brand-new dress entry and automatically generate inventory sizes
+// 8. Admin: Create a brand-new dress entry and automatically generate inventory sizes
 app.post('/api/admin/create-dress', upload.single('dressImage'), async (req, res) => {
   const { name, brand, retailPrice } = req.body;
 
@@ -194,7 +191,6 @@ app.post('/api/admin/create-dress', upload.single('dressImage'), async (req, res
   const imageUrl = `/images/${req.file.filename}`;
 
   try {
-    // 1. Insert new dress
     const dressQuery = `
       INSERT INTO dresses (name, brand, retail_price, image_urls)
       VALUES ($1, $2, $3, ARRAY[$4])
@@ -209,7 +205,6 @@ app.post('/api/admin/create-dress', upload.single('dressImage'), async (req, res
     
     const newDressId = dressResult.rows[0].id;
 
-    // 2. Generate default inventory items with explicit ::uuid casting
     const inventoryQuery = `
       INSERT INTO inventory_items (dress_id, size, sku)
       VALUES 
@@ -225,7 +220,8 @@ app.post('/api/admin/create-dress', upload.single('dressImage'), async (req, res
     res.status(500).json({ success: false, error: err.message });
   }
 });
-// Admin Endpoint 1: Remove a specific image URL from a dress
+
+// 9. Admin: Remove a specific image URL from a dress
 app.post('/api/admin/delete-image', async (req, res) => {
   const { dressId, imageUrl, is360 } = req.body;
 
@@ -241,12 +237,11 @@ app.post('/api/admin/delete-image', async (req, res) => {
   }
 });
 
-// Admin Endpoint 2: Delete an entire dress catalog card and its inventory
+// 10. Admin: Delete an entire dress catalog card and its inventory
 app.delete('/api/admin/dresses/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Delete associated inventory items first to satisfy foreign key constraints
     await pool.query('DELETE FROM inventory_items WHERE dress_id = $1', [id]);
     await pool.query('DELETE FROM dresses WHERE id = $1', [id]);
 
@@ -254,4 +249,10 @@ app.delete('/api/admin/dresses/:id', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// Start Server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
