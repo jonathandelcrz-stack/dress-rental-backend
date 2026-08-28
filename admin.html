@@ -146,21 +146,22 @@
     <button class="btn-primary" style="background: var(--func-blue);" onclick="fetchBookings()">Refresh Table</button>
   </div>
 
-  <thead>
-  <tr>
-    <th>Booking ID</th>
-    <th>Dress</th>
-    <th>Size</th>
-    <th>SKU</th>
-    <th>Rental Dates</th>
-    <th>Date Created</th>
-    <th>Time Created</th>
-    <th>Status</th>
-    <th>Action</th>
-  </tr>
+  <table>
+    <thead>
+      <tr>
+        <th>Booking ID</th>
+        <th>Dress</th>
+        <th>Size</th>
+        <th>SKU</th>
+        <th>Rental Dates</th>
+        <th>Date Created</th>
+        <th>Time Created</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
     </thead>
     <tbody id="bookingTableBody">
-      <tr><td colspan="6">Loading bookings...</td></tr>
+      <tr><td colspan="9">Loading bookings...</td></tr>
     </tbody>
   </table>
 
@@ -362,17 +363,20 @@
         const bookings = await response.json();
 
         if (bookings.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6">No bookings found.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9">No bookings found.</td></tr>';
           return;
         }
 
         tbody.innerHTML = bookings.map(b => `
           <tr>
-            <td><small>${b.id}</small></td>
-            <td><strong>${b.dress_name}</strong></td>
-            <td>${b.sku} (${b.size})</td>
-            <td>${b.rental_period}</td>
-            <td class="status-${b.status.toLowerCase()}">${b.status}</td>
+            <td><small>${b.id ? b.id.substring(0, 8) : ''}...</small></td>
+            <td><strong>${b.dress_name || 'N/A'}</strong></td>
+            <td>${b.size || 'N/A'}</td>
+            <td>${b.sku || 'N/A'}</td>
+            <td>${b.rental_period || 'N/A'}</td>
+            <td>${b.booking_date || 'N/A'}</td>
+            <td>${b.booking_time || 'N/A'}</td>
+            <td class="status-${(b.status || '').toLowerCase()}">${b.status || 'CONFIRMED'}</td>
             <td>
               ${b.status !== 'CANCELLED' 
                 ? `<button class="cancel-btn" onclick="cancelBooking('${b.id}')">Cancel</button>` 
@@ -381,7 +385,7 @@
           </tr>
         `).join('');
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--soft-rose);">Error fetching bookings.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="color:var(--soft-rose);">Error fetching bookings.</td></tr>';
       }
     }
 
