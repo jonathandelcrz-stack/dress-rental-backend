@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pretty on Repeat - Luxe Dress Rentals</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+  <style>
+    :root {
+      --blush-pink: #F4A6B7;
+      --soft-rose: #E9829B;
+      --pale-pink: #FCE8E8;
+      --champagne-gold: #DDB06A;
+      --warm-white: #FEFEFE;
+      --soft-black: #17191A;
+      --func-blue: #5B8DB8;
+      --func-green: #6F9B78;
+
+      --bg-main: var(--warm-white);
+      --bg-card: #FFFFFF;
+      --bg-controls: var(--pale-pink);
+      --text-main: var(--soft-black);
+      --text-muted: #8B6A55;
+      --border-color: #F1D4DC;
+      --shadow-color: rgba(233, 130, 155, 0.12);
+    }
+
+    [data-theme="dark"] {
+      --bg-main: #121314;
+      --bg-card: #1D1F21;
+      --bg-controls: #272A2D;
+      --text-main: var(--warm-white);
+      --text-muted: #D1B8AA;
+      --border-color: #383B3E;
+      --shadow-color: rgba(0, 0, 0, 0.4);
+    }
+
+    * { box-sizing: border-box; font-family: 'Playfair Display', Georgia, system-ui, sans-serif; transition: background 0.3s; }
+    body { margin: 0; padding: 20px; background: var(--bg-main); color: var(--text-main); }
+    
+    header { text-align: center; margin-bottom: 35px; position: relative; max-width: 1200px; margin: 0 auto; }
+    h1 { color: var(--soft-rose); margin-bottom: 5px; }
+
+    .theme-toggle-btn {
+      position: absolute; right: 10px; top: 0;
+      background: var(--bg-card); color: var(--text-main);
+      border: 1px solid var(--border-color); padding: 8px 16px;
+      border-radius: 20px; cursor: pointer;
+    }
+
+    .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
+    .dress-card { background: var(--bg-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); box-shadow: 0 6px 18px var(--shadow-color); }
+    
+    .image-container { position: relative; cursor: zoom-in; }
+    .main-dress-image { width: 100%; height: 390px; object-fit: cover; display: block; }
+    
+    .badge-360 { 
+      position: absolute; top: 12px; right: 12px; 
+      background: var(--champagne-gold); color: #FFF; 
+      padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; 
+    }
+
+    .thumbnail-strip { display: flex; gap: 8px; padding: 10px 15px; background: var(--bg-card); overflow-x: auto; }
+    .thumb-img { width: 52px; height: 68px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; opacity: 0.7; }
+    .thumb-img.active, .thumb-img:hover { border-color: var(--champagne-gold); opacity: 1; }
+
+    .dress-details { padding: 18px; }
+    .dress-brand { font-size: 0.75rem; text-transform: uppercase; color: var(--champagne-gold); letter-spacing: 1.5px; font-weight: 600; }
+    .dress-name { font-size: 1.15rem; font-weight: 600; margin: 6px 0; }
+    .dress-price { font-size: 1rem; font-weight: bold; margin-bottom: 14px; color: var(--soft-rose); }
+
+    .booking-controls { background: var(--bg-controls); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); }
+    .form-group { margin-bottom: 10px; }
+    label { font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 9px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); border-radius: 6px; }
+
+    button.btn-check { background: var(--func-blue); color: #FFF; font-weight: 600; cursor: pointer; border: none; padding: 10px; border-radius: 6px; width: 100%; }
+    button.btn-book { background: var(--func-green); color: #FFF; font-weight: 600; cursor: pointer; border: none; padding: 10px; border-radius: 6px; width: 100%; display: none; margin-top: 6px; }
+    .status-msg { font-size: 0.82rem; font-weight: 600; margin-top: 10px; }
+
+    /* Modal / Lightbox */
+    .modal-overlay { 
+      display: none; position: fixed; inset: 0; 
+      background: rgba(0, 0, 0, 0.85); z-index: 1000; 
+      align-items: center; justify-content: center; flex-direction: column; 
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content { max-width: 90vw; max-height: 80vh; border-radius: 8px; user-select: none; }
+    .modal-close { position: absolute; top: 20px; right: 30px; color: #FFF; font-size: 2rem; cursor: pointer; }
+    .viewer-hint { color: var(--champagne-gold); margin-top: 15px; font-size: 0.9rem; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <button class="theme-toggle-btn" onclick="toggleTheme()">🌙 Dark Mode</button>
+    <h1>Pretty on Repeat</h1>
+    <p style="color: var(--text-muted); font-style: italic;">Click any gown photo to zoom or view in interactive 360°.</p>
+  </header>
+
+  <div class="catalog-grid" id="catalog"></div>
+
+  <div class="modal-overlay" id="imageModal" onclick="closeModal()">
+    <span class="modal-close">&times;</span>
+    <img id="modalImg" class="modal-content" src="" onclick="event.stopPropagation()">
+    <div class="viewer-hint" id="viewerHint"></div>
+  </div>
+
+  <script>
+    let dressesStore = [];
+    let current360Frames = [];
+    let currentFrameIdx = 0;
+    let isDragging = false;
+    let startX = 0;
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle-btn');
+      if (html.getAttribute('data-theme') === 'light') {
+        html.setAttribute('data-theme', 'dark');
+        btn.innerText = '☀️ Light Mode';
+      } else {
+        html.setAttribute('data-theme', 'light');
+        btn.innerText = '🌙 Dark Mode';
+      }
+    }
+
+    async function loadCatalog() {
+      const catalogContainer = document.getElementById('catalog');
+      try {
+        const response = await fetch('/api/catalog?t=' + Date.now());
+        dressesStore = await response.json();
+
+        if (!Array.isArray(dressesStore) || dressesStore.length === 0) {
+          catalogContainer.innerHTML = '<p>No dresses available in catalog.</p>';
+          return;
+        }
+
+        catalogContainer.innerHTML = dressesStore.map(dress => {
+          const images = (dress.image_urls && dress.image_urls.length > 0) ? dress.image_urls : ['/images/8.jpg'];
+          const has360 = dress.images_360 && dress.images_360.length > 0;
+
+          const thumbnailsHtml = images.map((imgUrl, index) => `
+            <img 
+              src="${imgUrl}" 
+              class="thumb-img ${index === 0 ? 'active' : ''}" 
+              onclick="switchMainImage('${dress.id}', '${imgUrl}', this, event)"
+              onerror="this.onerror=null; this.src='https://via.placeholder.com/400x600?text=No+Image';"
+            >
+          `).join('');
+
+          const sizeOptions = (dress.sizes && dress.sizes[0] !== null) 
+            ? dress.sizes.map(s => `<option value="${s}">${s}</option>`).join('')
+            : '<option value="">No sizes</option>';
+
+          return `
+            <div class="dress-card" id="card-${dress.id}">
+              <div class="image-container" onclick="openLightbox('${dress.id}')">
+                <img id="main-img-${dress.id}" 
+                     src="${images[0]}" 
+                     class="main-dress-image" 
+                     alt="${dress.name}"
+                     onerror="this.onerror=null; this.src='https://via.placeholder.com/400x600?text=Image+Not+Found';">
+                ${has360 ? '<span class="badge-360">360° View</span>' : ''}
+              </div>
+              
+              <div class="thumbnail-strip">${thumbnailsHtml}</div>
+
+              <div class="dress-details">
+                <div class="dress-brand">${dress.brand || 'Pretty on Repeat'}</div>
+                <div class="dress-name">${dress.name}</div>
+                <div class="dress-price">Rent for $${(dress.retail_price * 0.2).toFixed(0)}</div>
+                
+                <div class="booking-controls">
+                  <div class="form-group">
+                    <label>Size:</label>
+                    <select id="size-${dress.id}">${sizeOptions}</select>
+                  </div>
+                  <div class="form-group">
+                    <label>Start Date:</label>
+                    <input type="date" id="start-${dress.id}">
+                  </div>
+                  <div class="form-group">
+                    <label>End Date:</label>
+                    <input type="date" id="end-${dress.id}">
+                  </div>
+                  <button class="btn-check" onclick="checkItemAvailability('${dress.id}')">Check Availability</button>
+                  <button class="btn-book" id="book-${dress.id}" onclick="placeOrder('${dress.id}')">Reserve Gown</button>
+                  <div class="status-msg" id="status-${dress.id}"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        catalogContainer.innerHTML = '<p style="color:var(--soft-rose);">Error loading catalog from backend.</p>';
+      }
+    }
+
+    function switchMainImage(dressId, newSrc, thumbElement, e) {
+      if (e) e.stopPropagation();
+      document.getElementById(`main-img-${dressId}`).src = newSrc;
+      const card = document.getElementById(`card-${dressId}`);
+      card.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active'));
+      thumbElement.classList.add('active');
+    }
+
+    function openLightbox(dressId) {
+      const dress = dressesStore.find(d => d.id === dressId);
+      const mainSrc = document.getElementById(`main-img-${dressId}`).src;
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImg');
+      const hint = document.getElementById('viewerHint');
+
+      modal.classList.add('active');
+
+      if (dress && dress.images_360 && dress.images_360.length > 0) {
+        current360Frames = dress.images_360;
+        currentFrameIdx = 0;
+        modalImg.src = current360Frames[0];
+        hint.innerText = "🔄 Drag left or right to rotate dress in 360°";
+        setup360Drag(modalImg);
+      } else {
+        current360Frames = [];
+        modalImg.src = mainSrc;
+        hint.innerText = "🔍 High-Resolution Preview Mode";
+        modalImg.onmousedown = null;
+        modalImg.ontouchstart = null;
+      }
+    }
+
+    function setup360Drag(imgEl) {
+      imgEl.ondragstart = () => false;
+
+      const handleStart = (clientX) => {
+        if (current360Frames.length === 0) return;
+        isDragging = true;
+        startX = clientX;
+      };
+
+      const handleMove = (clientX) => {
+        if (!isDragging || current360Frames.length === 0) return;
+        const diffX = clientX - startX;
+
+        if (Math.abs(diffX) > 10) {
+          if (diffX > 0) {
+            currentFrameIdx = (currentFrameIdx + 1) % current360Frames.length;
+          } else {
+            currentFrameIdx = (currentFrameIdx - 1 + current360Frames.length) % current360Frames.length;
+          }
+          imgEl.src = current360Frames[currentFrameIdx];
+          startX = clientX;
+        }
+      };
+
+      const handleEnd = () => { isDragging = false; };
+
+      imgEl.onmousedown = (e) => handleStart(e.clientX);
+      window.onmousemove = (e) => handleMove(e.clientX);
+      window.onmouseup = handleEnd;
+
+      imgEl.ontouchstart = (e) => handleStart(e.touches[0].clientX);
+      window.ontouchmove = (e) => handleMove(e.touches[0].clientX);
+      window.ontouchend = handleEnd;
+    }
+
+    function closeModal() {
+      document.getElementById('imageModal').classList.remove('active');
+      isDragging = false;
+    }
+
+    let itemHoldMap = {};
+
+    async function checkItemAvailability(dressId) {
+      const size = document.getElementById(`size-${dressId}`).value;
+      const start = document.getElementById(`start-${dressId}`).value;
+      const end = document.getElementById(`end-${dressId}`).value;
+      const statusEl = document.getElementById(`status-${dressId}`);
+      const bookBtn = document.getElementById(`book-${dressId}`);
+
+      bookBtn.style.display = 'none';
+
+      if (!start || !end) {
+        statusEl.innerText = 'Please select start and end dates.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/check-availability?dressId=${dressId}&size=${size}&startDate=${start}&endDate=${end}`);
+        const data = await response.json();
+
+        if (data.available) {
+          itemHoldMap[dressId] = data.itemId;
+          statusEl.style.color = 'var(--func-green)';
+          statusEl.innerText = 'Gown is available!';
+          bookBtn.style.display = 'block';
+        } else {
+          statusEl.style.color = 'var(--soft-rose)';
+          statusEl.innerText = data.message || 'Unavailable for selected dates.';
+        }
+      } catch (err) {
+        statusEl.innerText = 'Server error.';
+      }
+    }
+
+    async function placeOrder(dressId) {
+      const itemId = itemHoldMap[dressId];
+      const start = document.getElementById(`start-${dressId}`).value;
+      const end = document.getElementById(`end-${dressId}`).value;
+      const statusEl = document.getElementById(`status-${dressId}`);
+
+      const response = await fetch('/api/create-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, startDate: start, endDate: end })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        statusEl.style.color = 'var(--func-blue)';
+        statusEl.innerText = `Reservation Confirmed! ID: ${data.bookingId}`;
+        document.getElementById(`book-${dressId}`).style.display = 'none';
+      } else {
+        statusEl.innerText = 'Reservation failed.';
+      }
+    }
+
+    loadCatalog();
+  </script>
+</body>
+</html>
